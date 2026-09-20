@@ -4,7 +4,7 @@ Use `bin/rad_monitor.prg` and keep its matching `.prg.debug.xml`. Record watch m
 watch software/CIQ version, detector model and firmware, detector dose/count
 units, and app build date. The SDK/device files only establish compile support.
 User photos and reports have confirmed the current layout, live values, detector
-battery, accumulated dose, glance and native-menu behavior on an Instinct 3
+battery, glance and native-menu behavior on an Instinct 3
 Tactical Solar. The checklist remains useful for release regression testing;
 items that need logs, repeated cycles or a controlled reset are not implied by
 those visual checks.
@@ -38,6 +38,9 @@ those visual checks.
   that detector-side disconnect.
 - Leave connected for 10 minutes. Check latency, free memory from logs, and
   whether DATA_BUF exceeds 8 KiB. Save any unknown record ID/error verbatim.
+- Reconnect after an overnight detector backlog. An unknown record pair such as
+  `171/170` may be logged as a skipped tail, but it must not disconnect BLE or
+  enter a connect/error loop; the next poll must resume live readings.
 
 ## Cached glance
 
@@ -88,21 +91,22 @@ If logging is no longer needed, remove the text log while the app is stopped.
   samples should draw continuously with no wall-clock gap. Confirm the chart
   advances as new ten-second bins arrive and stays below the circular window.
 
-## 0.3.1 telemetry/settings regression
+## 0.3.3 telemetry/settings regression
 
-- Cycle dose rate → CPS → accumulated dose/duration → history in both directions.
+- Cycle dose rate → CPS → app-active dose/duration → history in both directions.
   Verify rate and CPS uncertainty percentages against the detector.
-- Compare accumulated µSv with the detector; retain raw accumulated-dose logs if
-  the scale differs. Close the app, allow the detector total to change, reopen,
-  and confirm the detector-buffer reconstruction catches up after reconnect.
-  Reset dose with the app closed and verify the reset event establishes zero
-  before following buffered measurements are added.
+- Confirm DOSE advances only while regular foreground replies arrive. Close and
+  reopen the app: the value must persist, while closed time must not be added.
+  Disconnect for more than ten seconds and reconnect; the gap must not be
+  counted. Select **Reset dose** immediately after Settings and confirm both dose
+  and duration return to zero. The value is intentionally not expected to match
+  the detector's total dose.
 - In MENU → Settings → Window data, choose Device battery. Check percentage and
   ring placement in the circular window; switch back to Logo and reopen the app
   to confirm the choice persists. Unknown battery should show `--` until status
   arrives. Confirm the percentage follows the detector, not the watch battery.
+- Exercise a detector/watch clock mismatch. A future-dated sample may be logged
+  as normalized to receipt time, but must not cause a protocol reconnect, and a
+  battery status in that reply must still update.
 - Exit/reopen and inspect the glance: all three cached values should persist,
   including battery when the newest poll contained only status data.
-- On firmware where `DS_uR` is unavailable, confirm Diagnostics changes to
-  `Dose buffered …` and disconnected detector records advance the last
-  authoritative RareData total without double-counting after another reopen.

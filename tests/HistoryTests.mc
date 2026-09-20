@@ -52,7 +52,8 @@ function screenNavigationAndMenu(logger) {
     delegate.onPreviousPage(); Test.assert(view.page==3);
     var menu=new AppMenuView(c);
     Test.assert(menu.getItem(0).getLabel().equals("Settings"));
-    Test.assert(menu.getItem(1).getLabel().equals("Connected devices"));
+    Test.assert(menu.getItem(1).getLabel().equals("Reset dose"));
+    Test.assert(menu.getItem(2).getLabel().equals("Connected devices"));
     return true;
 }
 

@@ -57,6 +57,7 @@ module RadiacodeProtocol {
         var sizes = [15,8,16,14,16,16,6,4,6,6];
         while (p < end) {
             require(p + 7 <= end, "Record header");
+            var recordStart=p;
             var seq=b[p]; var eid=b[p+1]; var gid=b[p+2];
             // Exchange filtering can omit records while the device's sequence
             // counter still advances. Record the gap, but keep parsing from the
@@ -79,7 +80,17 @@ module RadiacodeProtocol {
                 var stride = [8,16,14][gid-1];
                 length = 6 + u16(b,p) * stride;
             } else {
-                throw new Lang.InvalidValueException("Record " + eid + "/" + gid);
+                // Match upstream decode_VS_DATA_BUF: an unknown record ends the
+                // decodable prefix. This is seen in large detector backlogs and
+                // must not turn one buffered tail into a reconnect loop.
+                if(diagnostics!=null) {
+                    diagnostics["unknownEid"]=eid;
+                    diagnostics["unknownGid"]=gid;
+                    diagnostics["unknownSeq"]=seq;
+                    diagnostics["unknownOffset"]=recordStart-12;
+                    diagnostics["unknownRemaining"]=end-recordStart;
+                }
+                break;
             }
             require(p+length <= end, "Truncated record");
             var recordDose=null;

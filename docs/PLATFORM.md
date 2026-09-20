@@ -85,8 +85,9 @@ foreground entry starts a fresh session.
 
 **Strategy B is implemented:** Application.Storage holds a versioned dictionary
 with dose rate, raw dose rate, CPS, uncertainties, timestamp and flags, plus an
-independent status dictionary for detector battery, accumulated dose, duration,
-reset ordering and local-integration state. The glance reads the same app's
+independent status dictionary for detector battery and persistent app-active
+dose/duration. Each foreground run starts a new timing baseline, so closed time
+is not integrated. The glance reads the same app's
 persistent store, with type checks; there is no shared in-memory controller or
 inter-app storage assumption. Save at most every 15 seconds, when status changes,
 and on clean exit.

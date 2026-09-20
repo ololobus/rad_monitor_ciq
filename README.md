@@ -6,8 +6,10 @@
 # RadMonitor
 
 A small MIT-licensed Connect IQ watch app that talks directly to a Radiacode 10x
-via BLE. The current field-test detector is a Radiacode 102. It displays dose rate and CPS with uncertainty, accumulated dose and duration,
-battery status, retained history, and a stored numeric glance. No phone relay or runtime dependencies.
+via BLE. The current field-test detector is a Radiacode 102. It displays dose
+rate and CPS with uncertainty, app-active dose and duration, detector battery,
+retained history, and a stored numeric glance. No phone relay or runtime
+dependencies.
 
 RadMonitor is an independent, unofficial open-source project. It is not
 affiliated with, endorsed by, or sponsored by Garmin Ltd. or RADIACODE LTD.
@@ -16,7 +18,7 @@ Radiacode is a trademark of RADIACODE LTD. See the [privacy policy](PRIVACY.md).
 
 **Status:** verified on an Instinct 3 Tactical Solar against a physical
 Radiacode running firmware 4.14. BLE connection, live dose rate/CPS, detector
-battery, accumulated dose, retained history, glance rendering, native menus and
+battery, retained history, glance rendering, native menus and
 the Solar circular-window layout have all been exercised on the watch. Native
 Monkey C protocol/session/rendering tests also run in Garmin's simulator. See
 [validation](docs/VALIDATION.md) for the remaining limits.
@@ -27,9 +29,8 @@ Monkey C protocol/session/rendering tests also run in Garmin's simulator. See
   device definition identifies both Solar sizes as **`instinct3solar45mm`**
   (display name “Instinct® 3 Solar 45mm / 50mm”). No guessed Tactical product ID.
 - Radiacode **10x**, using the current `cdump/radiacode` record layout, with
-  detector firmware **4.8 or newer**. Firmware 4.14 has been tested physically;
-  the exact detector model used for that test was not recorded. Older firmware
-  is rejected.
+  detector firmware **4.8 or newer**. A Radiacode 102 on firmware 4.14 has been
+  tested physically. Older firmware is rejected.
 - Built with **Connect IQ SDK 9.2.0**, the stable release listed by Garmin at setup.
 
 ## Build
@@ -116,7 +117,7 @@ in [`store-assets/`](store-assets/README.md).
 4. Hold **MENU** for **Connected devices**, **Diagnostics**, **Info**, and **Settings**.
    Use UP/DOWN to select a section and GPS to open it. Details scroll with
    UP/DOWN; BACK returns. Info includes version and UTC build time.
-   From the main screen, UP/DOWN cycles dose rate → CPS → accumulated dose/duration → history plot.
+   From the main screen, UP/DOWN cycles dose rate → CPS → app-active dose/duration → history plot.
    **BACK** returns. On an error, **GPS** requests an immediate retry; automatic
    delays are 5, 10, 20, then 30 seconds. Turning the detector off and back on
    should recover without restarting the watch app.
@@ -150,17 +151,18 @@ in [`store-assets/`](store-assets/README.md).
 Limits: one detector, no background measurement collection, no spectrum,
 FIT recording or alarms. This is an informational third-party display, not
 calibrated safety or medical equipment. Replies are capped at 8 KiB to protect the watch heap;
-unknown/malformed records fail visibly rather than silently misaligning the
-parser. A large backlog may therefore require reconnecting/clearing the backlog
-with another client. Initialization sets the detector's local clock and device
+malformed records fail visibly rather than silently misaligning the parser;
+unknown record types preserve the validated prefix and are reported as a skipped
+tail. Initialization sets the detector's local clock and device
 time register, following upstream; it does not reset dose or spectrum. Cached
-values are saved at most every 15 seconds and again on clean exit. Abrupt shutdown
-can leave an older cache.
+measurements/app-active dose are checkpointed every 15 seconds and again on clean
+exit; a newly decoded battery status is saved immediately. Abrupt shutdown can
+leave the measurement cache slightly older.
 
 See [PROTOCOL.md](PROTOCOL.md), [platform findings](docs/PLATFORM.md),
 [LICENSE](LICENSE), and [upstream MIT attribution](THIRD_PARTY_NOTICES.md).
 
-## Screens and retained history (0.3.1)
+## Screens and retained history (0.3.3)
 
 The standard radiation trefoil is the launcher icon and occupies the small
 circular window on all four main screens by default. The live values are shifted left into the
@@ -168,19 +170,21 @@ main display area. Menus use that window for selection/scroll position, with
 body text below the cutout. Diagnostics and device/build details scroll.
 
 UP or DOWN cycles dose rate with percentage uncertainty, CPS with percentage
-uncertainty, accumulated dose (µSv) with duration, and the **µSv/h** plot.
+uncertainty, app-active dose (µSv) with duration, and the **µSv/h** plot.
 Hold MENU → Settings → Window data to choose Logo or Device battery. The saved
 battery option draws a circular progress bar and a one-line percentage capped
 at `99%`. Missing battery or uncertainty is shown as `--`. Battery comes from
-the detector's periodic RareData status. The app tries all three known read-only
-forms of the detector's `DS_uR` register. Firmware that does not expose it uses
-RareData as an authoritative anchor and advances that value from timestamped
-detector-buffer records. Consequently, measurements recorded by the detector
-while the watch was disconnected are included after reconnection. A detected
-`DOSE_RESET` event immediately clears the cache and starts a new anchor.
-Diagnostics reports `Dose raw N uR` followed by `(generic)`, `(batch)`, or
-`(single)` after a successful direct read. When every command fails, successful
-history reconstruction is reported as `Dose buffered N.NNN uSv`.
+the detector's periodic RareData status and is updated independently of the
+detector's cumulative-dose metadata.
+
+The **DOSE** page deliberately does not claim to show the detector's total-dose
+register. It integrates dose rate against monotonic watch runtime while regular
+live replies arrive, and its duration is the same covered app-active time. The
+total is saved and continues across app closes/reopens, but closed time and BLE
+gaps longer than ten seconds add neither dose nor duration. **Reset dose** in the
+main menu explicitly clears both values. Detector timestamps are not used for
+this integration. The detector's own display remains authoritative for lifetime
+or disconnected dose.
 
 The plot stores the latest **360 ten-second recording bins**, using the mean dose
 rate per bin. This is the last hour of measurements actually collected, not the

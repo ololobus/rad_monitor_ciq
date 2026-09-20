@@ -66,7 +66,8 @@ function trailingZeroAndEmpty(logger) {
 (:test)
 function rejectBadRecords(logger) {
     var rejected=0;
-    // Bad retcode, length, unknown eid, unknown gid, NaN, negative CPS.
+    // Bad retcode/length, impossible declared size, NaN and negative CPS.
+    // Unknown record IDs are a forward-compatible decoded-prefix boundary.
     for(var variant=0;variant<7;variant++) {
         var b=Fixtures.reply();
         if(variant==0) { b[4]=0; }
@@ -78,7 +79,7 @@ function rejectBadRecords(logger) {
         if(variant==6) { b[22]=192; }
         try { RadiacodeProtocol.dataBuffer(b,1000); } catch(e) { rejected++; }
     }
-    Test.assert(rejected==7);
+    Test.assert(rejected==5);
     return true;
 }
 (:test)
@@ -122,5 +123,19 @@ function recordGapKeepsParsingValidatedRecords(logger) {
     b.encodeNumber(b.size()-12,Lang.NUMBER_FORMAT_UINT32,{:offset=>8,:endianness=>Lang.ENDIAN_LITTLE});
     b[27]=99;
     Test.assert(RadiacodeProtocol.dataBuffer(b,1000)!=null);
+    return true;
+}
+
+(:test)
+function unknownRecordKeepsValidatedPrefix(logger) {
+    var b=Fixtures.reply();
+    // Replace the second record header with a pair observed after a long
+    // detector backlog. The valid real-time record before it must survive.
+    b[35]=171; b[36]=170;
+    var diagnostics={};
+    var sample=RadiacodeProtocol.decodeDataBuffer(b,1000,diagnostics);
+    Test.assert(sample!=null && sample["cps"]>4.19 && sample["cps"]<4.21);
+    Test.assert(diagnostics["unknownEid"]==171 && diagnostics["unknownGid"]==170);
+    Test.assert(diagnostics["unknownSeq"]==0 && diagnostics["unknownOffset"]==22);
     return true;
 }

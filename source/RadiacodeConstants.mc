@@ -6,13 +6,10 @@ module RadiacodeConstants {
     const SET_EXCHANGE = 0x0007;
     const GET_VERSION = 0x000a;
     const SET_TIME = 0x0a04;
-    const RD_VIRT_SFR = 0x0824;
     const WR_VIRT_SFR = 0x0825;
     const RD_VIRT_STRING = 0x0826;
-    const RD_VIRT_SFR_BATCH = 0x082a;
     const DEVICE_TIME = 0x0504;
     const DATA_BUF = 0x0100;
-    const DS_uR = 0x8022;
     const CHUNK_SIZE = 18;
     const MAX_RESPONSE = 8192;
 }

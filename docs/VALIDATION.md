@@ -10,11 +10,11 @@ installed device ID `instinct3solar45mm`.
 
 | Compiler metric | Bytes |
 | --- | ---: |
-| Foreground code | 18285 |
-| Foreground static data | 6682 |
+| Foreground code | 16370 |
+| Foreground static data | 6027 |
 | Glance code | 1930 |
 | Glance static data | 970 |
-| Total PRG file | 135196 |
+| Total PRG file | 131244 |
 
 PRG file size includes resources/metadata/signature and is not runtime RAM.
 Compiler code/data sizes exclude runtime heap use. The real watch's live BLE
@@ -22,15 +22,13 @@ memory behavior remains unmeasured; free memory is logged when caching samples.
 The target limits are 128 KiB foreground and 32 KiB glance.
 
 Final PRG SHA-256:
-`9683bd8a96cffc73d52e652205cf93bce24a76c1857c1a07a6d7bdca9856030a`.
+`534b2ebbe1f9abdd63632ff230808709287998ab849ae29d55b08c7c19a890b4`.
 
 ## Native tests
 
-The last complete `./scripts/test.sh` run before the VSFR batch fallback was
-**27 passed, 0 failed, 0 errors** as Monkey C on Garmin's Instinct 3 Solar
-simulator. [Raw output](TEST_RESULTS.txt). The updated 31-test binary compiles
-without warnings, but the local simulator stopped accepting `monkeydo` before
-test execution; three clean launches stalled before the first test result.
+The complete `./scripts/test.sh` run was **30 passed, 0 failed, 0 errors** as
+Monkey C on Garmin's Instinct 3 Solar simulator.
+[Recorded results](TEST_RESULTS.txt).
 
 - Exact first request and command-counter wrap.
 - Reassembly at every possible two-fragment boundary and one byte at a time.
@@ -39,9 +37,12 @@ test execution; three clean launches stalled before the first test result.
   flags, float dose conversion and CPS.
 - Firmware compatibility gate and byte-length-prefixed strings.
 - Empty buffer and the single trailing-zero firmware workaround.
-- Unknown, truncated, invalid-length, negative and NaN records.
+- Unknown record IDs end the decodable prefix without dropping validated data;
+  truncated known records, invalid lengths, negative values and NaNs remain fatal.
 - Record gaps preserve only validated prefix samples; a subsequent poll succeeds
   on the same session without reconnecting or resetting its command sequence.
+- An unknown backlog record such as `171/170` preserves the preceding sample and
+  the next poll succeeds on the same BLE session without reconnecting.
 - Echoed command/sequence rejection.
 - Complete initialization through first poll using the real controller and parser,
   with a fake BLE boundary, including both write/notification callback orders.
@@ -68,16 +69,19 @@ were visually inspected after rendering and use identical trefoil geometry.
 The initial physical test on detector firmware 4.14 exposed a filtered-record
 sequence gap and reconnect loop. Continuing from structurally valid records,
 as upstream does, fixed that failure. Subsequent watch photos and reports confirm
-live dose rate/CPS, battery, accumulated dose, retained graph, glance, native
+live dose rate/CPS, battery, retained graph, glance, native
 menus, pagination, settings and the Solar circular-window layout. The logo/plot
 combination also has a native render regression after its earlier IQ crash.
+The overnight-backlog `171/170` recovery is simulator-tested but still needs a
+repeat on the physical watch and Radiacode 102.
 
 ## Not yet validated
 
-Long-duration battery impact, detector firmware/model variants, repeated actual
-GATT recovery, reset-while-closed timing, flash persistence across power loss,
-and calibrated dose conversion across detector unit configurations. There is no
-Nordic BLE simulator adapter configured for this task.
+Long-duration battery impact, detector firmware/model variants, physical
+overnight unknown-record recovery, repeated actual GATT recovery,
+flash persistence across power loss, and calibrated dose-rate conversion across
+detector unit configurations. There is no Nordic BLE
+simulator adapter configured for this task.
 
 See [hardware checklist](HARDWARE_TEST.md) for release regression criteria.
 
@@ -96,15 +100,14 @@ simulator.json: main display origin (101,158), circle origin (214,158), diameter
 menu/detail content below y=62; the window is independent of the body layout.
 Both readings and plot use µSv/h per the user's unit clarification.
 
-## 0.3.1 telemetry checks
+## 0.3.3 telemetry checks
 
-Telemetry tests cover RareData field offsets and scaling, all direct `DS_uR`
-compatibility paths, buffered disconnected-dose reconstruction, replay guards,
-dose-reset ordering, both percentage uncertainties,
-status-only replies and independent cache persistence, record gaps/truncation,
+Telemetry tests cover RareData field offsets, persistent app-active dose
+integration, closed/connection-gap exclusion, explicit reset, clock-skew
+normalization without reconnect, independent battery updates, both percentage
+uncertainties, status-only replies and cache persistence, record gaps/truncation,
 settings persistence, and native drawing of unknown, 0%, 1%, 50%, 99% and 100%
 battery states. Navigation covers all four screens and menu sections. Glance
 drawing includes all three cached numbers with stock-style left/right anchors.
 Timestamp tests distinguish the accepted five-second transport skew from a real
-clock reversal. Exact accumulated-dose conversion still requires validation for
-each detector configuration.
+clock reversal. Detector accumulated dose is deliberately not presented.

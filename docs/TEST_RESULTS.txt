@@ -47,54 +47,31 @@ PASS
 Executing test recordGapKeepsParsingValidatedRecords...
 PASS
 ------------------------------------------------------------------------------
-Executing test initializeAndPoll...
-RC tx=0007 seq=0
-RC tx=0a04 seq=1
-RC tx=0825 seq=2
-RC tx=000a seq=3
-RC firmware=4.8
-RC state=READY
-RC tx=0826 seq=4
-RC direct accumulated=28.200000 raw_uR=2820
-RC tx=0826 seq=5
-RC sample uSv/h=0.090000 cps=5.500000 raw=0.000009 flags=0 rt=0
-RC freeMemory=8334608
+Executing test unknownRecordKeepsValidatedPrefix...
 PASS
 ------------------------------------------------------------------------------
-Executing test unavailableDirectDoseKeepsDetectorCache...
-RC tx=0826 seq=0
-RC direct dose unavailable; waiting for detector status
-RC tx=0826 seq=1
+Executing test initializeAndPoll...
 PASS
 ------------------------------------------------------------------------------
 Executing test timeoutRetryAndStop...
-RC tx=0007 seq=0
-RC error=Reply timeout 0007 retry(ms)=5000
 PASS
 ------------------------------------------------------------------------------
 Executing test badEchoDoesNotAdvanceSession...
-RC tx=0007 seq=0
-RC error=Protocol: Reply sequence retry(ms)=5000
 PASS
 ------------------------------------------------------------------------------
 Executing test recordGapDoesNotReconnect...
-RC tx=0826 seq=0
-RC record gap: expected=0 actual=7 offset=22 remaining=37 eid=0 gid=1 total=1
-RC sample uSv/h=0.090000 cps=5.500000 raw=0.000009 flags=0 rt=0
-RC freeMemory=8334704
-RC tx=0826 seq=1
-RC sample uSv/h=0.090000 cps=5.500000 raw=0.000009 flags=0 rt=0
+PASS
+------------------------------------------------------------------------------
+Executing test unknownBacklogRecordDoesNotReconnect...
 PASS
 ------------------------------------------------------------------------------
 Executing test rareDataAndUncertainty...
 PASS
 ------------------------------------------------------------------------------
+Executing test appDoseUsesRuntimeAndCanReset...
+PASS
+------------------------------------------------------------------------------
 Executing test statusOnlyResponsePersists...
-RC tx=0826 seq=0
-RC battery=87.650002 accumulated=2.500000 rawTotal=0.000250 duration=3661
-RC tx=0826 seq=1
-RC sample uSv/h=0.090000 cps=5.500000 raw=0.000009 flags=0 rt=0
-RC freeMemory=8334520
 PASS
 ------------------------------------------------------------------------------
 Executing test rareGapAndTruncation...
@@ -103,8 +80,10 @@ PASS
 Executing test batterySettingsAndRendering...
 PASS
 ------------------------------------------------------------------------------
-Executing test historicalStatusCannotReplaceCurrent...
-RC accumulated dose reset
+Executing test batteryUpdatesDespiteDetectorClockSkew...
+PASS
+------------------------------------------------------------------------------
+Executing test futureSampleDoesNotReconnect...
 PASS
 ------------------------------------------------------------------------------
 Executing test doseResetEventDecoded...
@@ -131,18 +110,21 @@ rejectHeaderMismatch                    PASS
 firmwareGate                            PASS
 truncatedRecords                        PASS
 recordGapKeepsParsingValidatedRecords   PASS
+unknownRecordKeepsValidatedPrefix       PASS
 initializeAndPoll                       PASS
-unavailableDirectDoseKeepsDetectorCache PASS
 timeoutRetryAndStop                     PASS
 badEchoDoesNotAdvanceSession            PASS
 recordGapDoesNotReconnect               PASS
+unknownBacklogRecordDoesNotReconnect     PASS
 rareDataAndUncertainty                  PASS
+appDoseUsesRuntimeAndCanReset           PASS
 statusOnlyResponsePersists              PASS
 rareGapAndTruncation                    PASS
 batterySettingsAndRendering             PASS
-historicalStatusCannotReplaceCurrent    PASS
+batteryUpdatesDespiteDetectorClockSkew  PASS
+futureSampleDoesNotReconnect            PASS
 doseResetEventDecoded                   PASS
 smallFutureTimestampIsCurrent           PASS
-Ran 27 tests
+Ran 30 tests
 
-PASSED (passed=27, failed=0, errors=0)
+PASSED (passed=30, failed=0, errors=0)

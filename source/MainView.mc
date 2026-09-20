@@ -39,7 +39,7 @@ class MainView extends WatchUi.View {
             duration=(seconds/3600).toNumber().format("%d")+"h "+((seconds%3600)/60).toNumber().format("%02d")+"m "+(seconds%60).toNumber().format("%02d")+"s";
         }
         ScreenLayout.fit(dc,88,108,duration,140,G.FONT_XTINY);
-        ScreenLayout.fit(dc,88,134,s==null ? "Waiting for status" : "Updated "+MeasurementStore.age(s),150,G.FONT_XTINY);
+        ScreenLayout.fit(dc,88,134,"App active time",150,G.FONT_XTINY);
     }
     function plot(dc) {
         var data=_c.history.points;

@@ -73,7 +73,6 @@ and ordering/arguments from `RadiaCode.__init__`, `set_local_time`, `device_time
 | Set local clock | `SET_TIME = 0x0a04` | 8 bytes: day, month, year−2000, 0, second, minute, hour, 0 |
 | Set device time | `WR_VIRT_SFR = 0x0825` | u32 `DEVICE_TIME = 0x0504`, u32 zero; reply u32 status must be 1 |
 | Firmware gate | `GET_VERSION = 0x000a` | Boot and target: u16 minor, u16 major, u8 string length, string bytes. Require target >=4.8 |
-| Poll accumulated dose | `RD_VIRT_STRING = 0x0826`, `RD_VIRT_SFR_BATCH = 0x082a`, then legacy `RD_VIRT_SFR = 0x0824` | u32 `VSFR.DS_uR = 0x8022`; validate response shape before reading u32 µR |
 | Poll data | `RD_VIRT_STRING = 0x0826` | u32 `VS.DATA_BUF = 0x0100` |
 
 `SET_EXCHANGE` and `SET_TIME` reply payloads are not interpreted upstream and
@@ -84,10 +83,11 @@ changes and alarm writes are not implemented.
 After the device-time acknowledgement, the timestamp base is watch UTC epoch
 seconds +128, exactly following upstream's relative-time convention. Local
 calendar fields are used for SET_TIME; record offsets are independent of time
-zones. Record timestamps are kept to one-second precision for freshness, not
-replaced by receipt time. Unexpected timestamps more than five seconds in the
-future cause an error. The UI clamps the accepted zero-to-five-second future
-skew to `0s ago`; only a larger negative age is labeled `Clock changed`.
+zones. Record timestamps are normally kept to one-second precision for freshness.
+A timestamp more than five seconds in the future is a detector/watch clock-skew
+condition rather than a framing failure: it is normalized to receipt time and
+does not reconnect BLE. The UI clamps zero-to-five-second future skew to `0s ago`;
+only a larger negative age that was not normalized is labeled `Clock changed`.
 
 A virtual-string reply after its echoed header contains u32 status (=1), u32
 payload length, then the payload. The port implements upstream's special case
@@ -131,51 +131,29 @@ Event 0 / group 3 (`RareData`) has a 14-byte `<IfHHH>` payload:
 | Offset | Field / conversion |
 | --- | --- |
 | 0 | u32 accumulated-dose duration, seconds |
-| 4 | Float32 accumulated dose; raw ×10,000 displayed as µSv |
+| 4 | Float32 detector accumulated dose (decoded for protocol compatibility, not displayed) |
 | 8 | u16 temperature; (raw−2000)/100 °C |
 | 10 | u16 battery; raw/100 percent |
 | 12 | u16 flags |
 
-Accumulated-dose scaling uses the same raw-unit convention as dose rate and
-still requires comparison with the physical detector. Raw accumulated dose is
-retained and logged. Battery, total dose and duration are cached independently
-of RealTimeData, including replies containing only RareData. They remain unknown
-until the first such record; their update interval is controlled by the detector.
-Temperature is decoded but not displayed.
+Only the battery and temperature fields are consumed by the controller;
+temperature remains undisplayed. Battery follows receipt order rather than the
+detector record clock, so a clock skew cannot suppress a newer received charge
+reading. The last battery value is cached for the circular window and glance.
 
-The app requests `DS_uR` (`0x8022`) first with generic `RD_VIRT_STRING`
-(`0x0826`), then automatically retries a rejected generic read with upstream's
-typed `RD_VIRT_SFR_BATCH` (`0x082a`), followed by the declared legacy single
-register command `RD_VIRT_SFR` (`0x0824`). It polls immediately after each
-connection and once per minute thereafter. A successful generic response contains u32
-result `1`, u32 byte count `4`, and the detector's u32 micro-roentgen total; a
-successful batch response contains validity mask `1` followed by that total. The
-single-register response accepts only the known raw/status/length shapes. The
-100 µR/µSv convention converts that value to µSv. Because this register belongs
-to the detector, it includes dose accumulated while the watch was disconnected.
-As in upstream `read_request`, one trailing zero byte beyond the declared length
-is accepted to accommodate the current firmware response quirk.
-If every register form is unavailable, the app never substitutes connected-only
-integration. It anchors on the newest RareData total and integrates subsequent
-timestamped RealTimeData and DoseRateDB records from the detector buffer. Those
-records include data collected while the watch was disconnected. The persisted
-last detector timestamp prevents replayed buffers from being counted twice;
-reset and power events delimit integration, and gaps over five minutes are not
-bridged.
-The former `device-status-v1` cache is migrated so an upgrade does not hide the
-last known detector battery.
-
-Event 4 / group 7 is `DOSE_RESET`. While the app is connected, that event clears
-the cached accumulated dose and duration immediately and establishes a timestamp
-barrier so older buffered RareData cannot restore the pre-reset value. A reset
-performed while the app is closed is reflected by the reset event and following
-buffered records after reconnection; the watch cannot observe it while stopped.
-
-RareData packet timestamps can be far in the past while the detector drains its
-buffer. The app therefore orders cumulative status primarily by accumulation
-duration, not by a short wall-clock freshness cutoff. This prevents an old
-stored total from remaining on screen for hours. The packet timestamp is retained
-as `sourceTimestamp`; the visible "Updated" age starts when the status was received.
+The dose page is intentionally app-active-only. It trapezoid-integrates
+consecutive received RealTimeData dose rates in µSv/h against monotonic watch
+runtime. The accumulated value persists across foreground launches, but a new
+launch starts with no timing baseline and intervals over ten seconds are not
+bridged. Thus time with the app closed and BLE outages add neither dose nor
+duration. The user can explicitly clear both through **Reset dose**. The app does
+not request or display `DS_uR`, RareData accumulated dose, or the `DOSE_RESET`
+record as a detector-total measurement; the physical detector remains
+authoritative for it.
+Event 4 / group 7 is still decoded in protocol tests for record compatibility.
+The former `device-status-v1` cache is migrated only to preserve its last known
+detector battery. Cached app-active dose/duration are retained only when marked
+with the new storage semantics; older detector-total caches are discarded.
 
 Other known records are skipped using upstream lengths, so their bytes are not
 misread as RealTimeData:
@@ -187,12 +165,17 @@ misread as RealTimeData:
 A record-sequence gap is recorded in diagnostics, but parsing continues from the
 next structurally valid record. Filtered exchanges can legitimately omit records
 while the detector's sequence counter still advances; stopping at that gap can
-discard a later RareData record containing battery and accumulated dose. A buffer
-without RealTimeData does not update the rate cache, while valid RareData anywhere
-in the buffer updates the independent status cache. The first gap is logged with
+discard a later RareData battery record. A buffer without RealTimeData does not
+update the rate cache, while valid RareData anywhere in the buffer updates the
+independent battery cache. The first gap is logged with
 expected/actual sequence, byte offset, remaining bytes, event and group IDs.
-Command-echo sequence mismatches still fail the transaction, and unknown or
-truncated records still reject the whole reply.
+Command-echo sequence mismatches still fail the transaction, and malformed
+envelope/value data still rejects the reply. As in upstream
+`decode_VS_DATA_BUF`, an unknown record ID/group pair ends that buffer's
+decodable prefix: already validated records are kept, the skipped tail is
+diagnosed, and the BLE session continues. This avoids a persistent reconnect
+loop when a large detector backlog contains a record type the app does not
+understand. Truncated known records remain fatal.
 Large backlogs over 8 KiB are not streamed/skipped yet. Poll interval is two
 seconds after each completed reply, with no overlapping command queue. The UI
 timer also runs at two seconds, matching the measurement cadence rather than

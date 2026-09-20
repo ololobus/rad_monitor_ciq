@@ -25,34 +25,48 @@ function rareDataAndUncertainty(logger) {
 }
 
 (:test)
-function bufferedDoseIncludesDisconnectedRecords(logger) {
+function appDoseUsesRuntimeAndCanReset(logger) {
+    var old=Application.Storage.getValue(MeasurementStore.STATUS_KEY);
     var c=new RadiacodeController();
-    c.deviceStatus={"accumulated"=>0.025,"rawAccumulated"=>0.0000025,
-        "duration"=>100,"timestamp"=>1000,"sourceTimestamp"=>1000,
-        "doseIntegratedUntil"=>1000};
-    Test.assert(c.advanceBufferedDose(0.035,2800,2801));
-    Test.assert(c.deviceStatus["accumulated"]>0.0599 && c.deviceStatus["accumulated"]<0.0601);
-    Test.assert(c.deviceStatus["duration"]==1900);
-    Test.assert(!c.advanceBufferedDose(1.0,2800,2802));
-    Test.assert(c.deviceStatus["accumulated"]<0.0601);
+    c.deviceStatus={"accumulated"=>0.0,"rawAccumulated"=>0.0,
+        "duration"=>0,"timestamp"=>1000,"sessionOnly"=>true};
+    // Detector timestamps are irrelevant to app-active integration.
+    Test.assert(c.accumulateAppDose({"timestamp"=>9000,"dose"=>0.09},1000,1000));
+    Test.assert(c.accumulateAppDose({"timestamp"=>500,"dose"=>0.18},1002,3000));
+    Test.assert(c.deviceStatus["duration"]==2);
+    Test.assert(c.deviceStatus["accumulated"]>0.000074 && c.deviceStatus["accumulated"]<0.000076);
+    // A long connection gap establishes a new baseline without bridging it.
+    Test.assert(c.accumulateAppDose({"timestamp"=>501,"dose"=>20.0},1020,20000));
+    Test.assert(c.deviceStatus["duration"]==2);
+    // A new foreground controller resumes the saved app-active total, but its
+    // first read is only a baseline and cannot bridge time spent closed.
+    MeasurementStore.saveStatus(c.deviceStatus);
+    var reopened=new RadiacodeController();
+    Test.assert(reopened.deviceStatus["duration"]==2);
+    Test.assert(reopened.deviceStatus["accumulated"]>0.000074);
+    reopened.accumulateAppDose({"timestamp"=>9999,"dose"=>0.18},2000,40000);
+    Test.assert(reopened.deviceStatus["duration"]==2);
+    reopened.resetAccumulatedDose();
+    Test.assert(reopened.deviceStatus["duration"]==0 && reopened.deviceStatus["accumulated"]==0.0);
+    Application.Storage.setValue(MeasurementStore.STATUS_KEY,old);
     return true;
 }
 (:test)
 function statusOnlyResponsePersists(logger) {
     var old=Application.Storage.getValue(MeasurementStore.STATUS_KEY);
     var c=new RadiacodeController(); var link=new SessionTransport(c); c.transport=link;
-    c.sample=null; c.deviceStatus=null; c._baseTime=Time.now().value()+128;
-    c._running=true; c._statusPollAt=System.getTimer()+60000; link.state="READY"; c.tick();
+    c.sample=null; c._baseTime=Time.now().value()+128;
+    c._running=true; link.state="READY"; c.tick();
     link.respond(StatusFixtures.reply().slice(4,null),true);
     Test.assert(link.error==null && c.sample==null && !c._pending);
-    Test.assert(c.deviceStatus["duration"]==3661);
+    Test.assert(c.deviceStatus["duration"]==0);
     Test.assert(MeasurementStore.loadStatus()["battery"]>87.64);
-    // Real-time-only buffers must retain the last separate battery/dose status.
+    // The first successful foreground sample establishes the dose baseline.
     c._pollAt=0; c.tick();
     var previous=Application.Storage.getValue(MeasurementStore.KEY);
     var history=Application.Storage.getValue("history-v1");
     link.respond(Fixtures.reply().slice(4,null),false);
-    Test.assert(c.deviceStatus["duration"]==3661 && c.sample!=null);
+    Test.assert(c.deviceStatus["duration"]==0 && c.sample!=null);
     Application.Storage.setValue(MeasurementStore.KEY,previous);
     Application.Storage.setValue("history-v1",history);
     Application.Storage.setValue(MeasurementStore.STATUS_KEY,old);
@@ -66,8 +80,8 @@ function rareGapAndTruncation(logger) {
     var diagnostics={};
     Test.assert(RadiacodeProtocol.decodeDataBuffer(b,1000,diagnostics)!=null);
     Test.assert(diagnostics.hasKey("rare") && diagnostics.hasKey("expected"));
-    // A filtered reply can put the cumulative status after a sequence gap.
-    // It must still supply battery and total dose after the earlier RT record.
+    // A filtered reply can put RareData after a sequence gap. The complete
+    // record must still decode after the earlier real-time record.
     b=Fixtures.reply().slice(0,34).addAll(StatusFixtures.reply().slice(12,null));
     b.encodeNumber(b.size()-12,Lang.NUMBER_FORMAT_UINT32,{:offset=>8,:endianness=>Lang.ENDIAN_LITTLE});
     diagnostics={};
@@ -120,30 +134,32 @@ function batterySettingsAndRendering(logger) {
 }
 
 (:test)
-function historicalStatusCannotReplaceCurrent(logger) {
-    var c=new RadiacodeController(); c.deviceStatus=null;
-    Test.assert(c.acceptStatus({"timestamp"=>1000,"battery"=>32.0,"accumulated"=>18.24,"duration"=>886410},1000+3814*3600));
-    Test.assert(c.deviceStatus["timestamp"]==1000+3814*3600);
-    // A newer cumulative snapshot wins even when its packet timestamp is old.
-    Test.assert(c.acceptStatus({"timestamp"=>2000,"battery"=>83.0,"accumulated"=>28.2,"duration"=>1684800},2000+3814*3600));
-    Test.assert(!c.acceptStatus({"timestamp"=>1999,"battery"=>20.0,"accumulated"=>10.0,"duration"=>500000},2000+3814*3600));
-    Test.assert(!c.acceptStatus({"timestamp"=>2000+3814*3600+10,"battery"=>30.0,"accumulated"=>30.0,"duration"=>1700000},2000+3814*3600));
-    Test.assert(c.deviceStatus["battery"]==83.0 && c.deviceStatus["accumulated"]==28.2);
-    // Resetting accumulated dose is legitimate when the record itself is newer.
-    Test.assert(c.acceptStatus({"timestamp"=>2001+3814*3600,"battery"=>83.0,"accumulated"=>0.0,"duration"=>0},2001+3814*3600));
-    // A dose-reset event clears the cached total immediately and blocks older
-    // buffered status from restoring the pre-reset value.
-    c.resetDose(5000,6000);
-    Test.assert(c.deviceStatus["accumulated"]==0.0 && c.deviceStatus["duration"]==0);
-    Test.assert(!c.acceptStatus({"timestamp"=>4999,"battery"=>82.0,"accumulated"=>28.34,"duration"=>1350013},6000));
-    Test.assert(c.acceptDirectDose(1234,6010));
-    Test.assert(c.deviceStatus["accumulated"]>12.339 && c.deviceStatus["accumulated"]<12.341);
-    // Buffered status arriving after the direct read may update battery and
-    // duration, but must not restore its older accumulated dose.
-    Test.assert(c.acceptStatus({"timestamp"=>5001,"battery"=>81.0,
-        "accumulated"=>28.34,"rawAccumulated"=>0.002834,"duration"=>1350013},6011));
-    Test.assert(c.deviceStatus["battery"]==81.0);
-    Test.assert(c.deviceStatus["accumulated"]>12.339 && c.deviceStatus["accumulated"]<12.341);
+function batteryUpdatesDespiteDetectorClockSkew(logger) {
+    var c=new RadiacodeController();
+    c.deviceStatus={"accumulated"=>0.025,"rawAccumulated"=>0.0000025,
+        "duration"=>100,"timestamp"=>6000,"sessionOnly"=>true};
+    Test.assert(c.acceptBattery({"timestamp"=>1000,"battery"=>82.0,"temperature"=>20.0},6000));
+    // Receipt order wins even when the detector clock jumps backward or ahead.
+    Test.assert(c.acceptBattery({"timestamp"=>999,"battery"=>74.0,"temperature"=>20.0},6001));
+    Test.assert(c.acceptBattery({"timestamp"=>9000,"battery"=>71.0,"temperature"=>20.0},6002));
+    Test.assert(c.deviceStatus["battery"]==71.0);
+    Test.assert(c.deviceStatus["accumulated"]==0.025 && c.deviceStatus["duration"]==100);
+    return true;
+}
+
+(:test)
+function futureSampleDoesNotReconnect(logger) {
+    var old=Application.Storage.getValue(MeasurementStore.STATUS_KEY);
+    var c=new RadiacodeController(); var link=new SessionTransport(c); c.transport=link;
+    c.sample=null; c._baseTime=Time.now().value()+1000;
+    c._running=true; link.state="READY"; c.tick();
+    var mixed=StatusFixtures.reply().addAll(Fixtures.reply().slice(12,null));
+    mixed.encodeNumber(mixed.size()-12,Lang.NUMBER_FORMAT_UINT32,{:offset=>8,:endianness=>Lang.ENDIAN_LITTLE});
+    link.respond(mixed.slice(4,null),false);
+    Test.assert(link.error==null && link.state.equals("READY"));
+    Test.assert(c.sample!=null && MeasurementStore.elapsed(c.sample)==0);
+    Test.assert(c.deviceStatus["battery"]>87.64);
+    Application.Storage.setValue(MeasurementStore.STATUS_KEY,old);
     return true;
 }
 

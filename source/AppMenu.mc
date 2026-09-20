@@ -9,6 +9,7 @@ class AppMenuView extends WatchUi.Menu2 {
     function initialize(c) {
         Menu2.initialize({:title=>"RadMonitor"}); controller=c;
         addItem(new WatchUi.MenuItem("Settings",null,3,{}));
+        addItem(new WatchUi.MenuItem("Reset dose",null,4,{}));
         addItem(new WatchUi.MenuItem("Connected devices",null,0,{}));
         addItem(new WatchUi.MenuItem("Diagnostics",null,1,{}));
         addItem(new WatchUi.MenuItem("Info",null,2,{}));
@@ -22,6 +23,9 @@ class AppMenuDelegate extends WatchUi.Menu2InputDelegate {
         if(section==3) {
             var settings=new SettingsView();
             WatchUi.pushView(settings,new SettingsDelegate(settings),WatchUi.SLIDE_UP);
+        } else if(section==4) {
+            _view.controller.resetAccumulatedDose();
+            WatchUi.popView(WatchUi.SLIDE_DOWN);
         } else {
             var page=new DetailView(_view.controller,section);
             WatchUi.pushView(page,new DetailDelegate(page),WatchUi.SLIDE_UP);
