@@ -1,0 +1,4 @@
+project.manifest = manifest-beta.xml
+base.sourcePath = source
+base.resourcePath = resources
+base.lang.eng = resources/strings

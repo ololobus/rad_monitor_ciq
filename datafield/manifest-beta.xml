@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<iq:manifest xmlns:iq="http://www.garmin.com/xml/connectiq" version="3">
+  <iq:application id="81f6e24d93104f92ac7270b64769d925" type="datafield" name="@Strings.AppNameBeta" entry="RadMonitorFieldApp" launcherIcon="@Drawables.LauncherIcon" minApiLevel="4.0.0">
+    <iq:products><iq:product id="instinct3solar45mm"/></iq:products>
+    <iq:permissions>
+      <iq:uses-permission id="BluetoothLowEnergy"/>
+      <iq:uses-permission id="FitContributor"/>
+    </iq:permissions>
+    <iq:languages><iq:language>eng</iq:language></iq:languages>
+    <iq:barrels/>
+  </iq:application>
+</iq:manifest>

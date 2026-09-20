@@ -1,6 +1,6 @@
 # Hardware and visual acceptance checklist
 
-Use `bin/rad_monitor.prg` and keep its matching `.prg.debug.xml`. Record watch model,
+Use `bin/rad_monitor-app-production.prg` and keep its matching `.prg.debug.xml`. Record watch model,
 watch software/CIQ version, detector model and firmware, detector dose/count
 units, and app build date. The SDK/device files only establish compile support.
 User photos and reports have confirmed the current layout, live values, detector

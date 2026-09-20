@@ -5,8 +5,9 @@
 
 # RadMonitor
 
-A small MIT-licensed Connect IQ watch app that talks directly to a Radiacode 10x
-via BLE. The current field-test detector is a Radiacode 102. It displays dose
+A small MIT-licensed Connect IQ watch app and companion workout data field that
+talk directly to a Radiacode 10x via BLE. The current field-test detector is a
+Radiacode 102. The watch app displays dose
 rate and CPS with uncertainty, app-active dose and duration, detector battery,
 retained history, and a stored numeric glance. No phone relay or runtime
 dependencies.
@@ -16,12 +17,17 @@ affiliated with, endorsed by, or sponsored by Garmin Ltd. or RADIACODE LTD.
 Garmin and Connect IQ are trademarks of Garmin Ltd. or its subsidiaries;
 Radiacode is a trademark of RADIACODE LTD. See the [privacy policy](PRIVACY.md).
 
-**Status:** verified on an Instinct 3 Tactical Solar against a physical
+**Watch-app status:** verified on an Instinct 3 Tactical Solar against a physical
 Radiacode running firmware 4.14. BLE connection, live dose rate/CPS, detector
 battery, retained history, glance rendering, native menus and
 the Solar circular-window layout have all been exercised on the watch. Native
 Monkey C protocol/session/rendering tests also run in Garmin's simulator. See
 [validation](docs/VALIDATION.md) for the remaining limits.
+
+**Data-field status:** builds and passes native protocol/history tests for the
+same Instinct target, but has not yet been exercised in a physical workout. It
+is a separate Connect IQ application with its own UUID, private storage and
+installable PRG; the repository shares only the protocol and BLE source files.
 
 ## Supported hardware
 
@@ -40,13 +46,19 @@ SDK 9.2.0, and install the **Instinct 3 Solar 45mm / 50mm** device definition.
 Install Java 17 (Java 11+ is required by Garmin's command-line guide).
 
 ```sh
-./scripts/build.sh
+./scripts/build.sh app-production
+./scripts/build.sh app-beta
+./scripts/build.sh field-production
+./scripts/build.sh field-beta
 ```
 
-Output: `bin/rad_monitor.prg`. The script reads the active SDK from Garmin's macOS
-configuration, or uses `CIQ_SDK`. Set `JAVA_HOME` if needed. This workspace already
-has a project-local Temurin 17 runtime under `.tools/`, which the script detects.
-The runtime and SDK are not part of the repository.
+Outputs are named after the selected product and channel under `bin/`, for
+example `bin/rad_monitor-app-production.prg` and
+`bin/rad_monitor-field-beta.prg`. The script reads the
+active SDK from Garmin's macOS configuration, or uses `CIQ_SDK`. Set `JAVA_HOME`
+if needed. This workspace already has a project-local Temurin 17 runtime under
+`.tools/`, which the script detects. The runtime and SDK are not part of the
+repository.
 
 The first build creates an RSA signing key in `.keys/developer_key.der` with
 private permissions. Keep that key for subsequent builds; it is ignored by Git.
@@ -64,13 +76,14 @@ For tests, open the SDK's Connect IQ simulator, then:
 
 ```sh
 ./scripts/test.sh
+./scripts/test-field.sh
 ```
 
 For a normal simulator launch from the repository root:
 
 ```sh
 source scripts/env.sh
-monkeydo bin/rad_monitor.prg instinct3solar45mm
+monkeydo bin/rad_monitor-app-production.prg instinct3solar45mm
 ```
 
 The simulator requires Garmin's supported **Nordic BLE adapter and firmware** for
@@ -85,7 +98,7 @@ fake transport; they require no detector. See [platform notes](docs/PLATFORM.md)
 2. Open its internal storage. On macOS use an MTP-capable file-transfer client;
    do not assume the watch appears as a Finder volume. Close Garmin Express if
    it prevents another client from accessing the device.
-3. Copy `bin/rad_monitor.prg` into **`GARMIN/APPS/`**, naming it
+3. Copy `bin/rad_monitor-app-production.prg` into **`GARMIN/APPS/`**, naming it
    **`RADMONIT.PRG`**. The shortened basename respects the watch's eight-character
    sideload filename convention. Do not copy the test PRG or debug XML.
 4. For diagnostics, create an empty **`GARMIN/APPS/LOGS/RADMONIT.TXT`** before
@@ -98,9 +111,19 @@ fake transport; they require no detector. See [platform notes](docs/PLATFORM.md)
 Use the same PRG filename when replacing a build. No store publication or phone
 companion is required. [Garmin's USB mode documentation](https://www8.garmin.com/manuals-apac/webhelp/instinct3/EN-SG/GUID-5E0E6DEF-C4DA-4D42-874C-3E2173361BFE-2591.html).
 
+The data field is installed separately: copy
+`bin/rad_monitor-field-production.prg` into
+`GARMIN/APPS/` as **`RADFIELD.PRG`**, then add **RadMonitor Field** to a Connect
+IQ field slot in the desired native activity's data-screen settings. Close the
+full RadMonitor watch app first so the detector is available for the field's BLE
+connection. Its Connect IQ setting selects µSv/h or CPS for the display; both
+metrics are submitted to the workout FIT file regardless of that choice.
+
 For Connect IQ Store publication, export an `.iq` package rather than uploading
-the sideload `.prg`. Ready-to-upload icon PNGs and their editable SVG sources are
-in [`store-assets/`](store-assets/README.md).
+the sideload `.prg`. Production and beta have permanent, separate UUIDs and
+dedicated build/export commands; see the [release guide](docs/RELEASES.md).
+Ready-to-upload icon PNGs and their editable SVG sources are in
+[`store-assets/`](store-assets/README.md).
 
 ## First hardware test
 
@@ -139,7 +162,18 @@ in [`store-assets/`](store-assets/README.md).
 - `RadiacodeController.mc`: initialization, one outstanding command, polling,
   deadlines, retry backoff, sample freshness and cache writes.
 - `MainView.mc`: four high-contrast measurement/history screens.
-- `MeasurementStore.mc` / `RadMonitorGlance.mc`: independent persistent measurement/status caches, legacy status migration, and the RadMonitor numeric glance.
+- `MeasurementStore.mc` / `RadMonitorGlance.mc`: independent persistent
+  measurement/status caches, legacy status migration, and the RadMonitor
+  numeric glance.
+- Production and beta manifests/Jungle files define four permanent application
+  identities: two `watch-app` variants at the repository root and two
+  `datafield` variants under `datafield/`. Source code remains shared.
+- `datafield/source/FieldController.mc`: timer-free activity-field lifecycle;
+  `DataField.compute()` drives BLE deadlines and two-second polling.
+- `datafield/source/FieldHistory.mc`: packed 2.8 KB rolling buffer containing
+  360 ten-second means for both µSv/h and CPS.
+- `datafield/source/RadMonitorFieldView.mc`: adaptive numeric/plot rendering,
+  display-unit setting, and two FIT developer fields.
 
 **Strategy B: stored-data glance.** The full app owns BLE and stops it on exit; the
  glance reads storage and allocates no transport/controller. It reloads stored data
@@ -148,8 +182,11 @@ in [`store-assets/`](store-assets/README.md).
  establish reliable scan/connect/read timing or connection survival through
  transitions. Those remain hardware questions, not claims of API prohibition.
 
-Limits: one detector, no background measurement collection, no spectrum,
-FIT recording or alarms. This is an informational third-party display, not
+Limits: one detector, no background measurement collection, no spectrum or
+alarms. The watch app does not record FIT activities. The separate data field
+submits CPS and µSv/h to the native activity FIT file when its timer is running;
+Garmin controls the final FIT/Smart Recording cadence, so exact two-second FIT
+timestamps are not guaranteed. This is an informational third-party display, not
 calibrated safety or medical equipment. Replies are capped at 8 KiB to protect the watch heap;
 malformed records fail visibly rather than silently misaligning the parser;
 unknown record types preserve the validated prefix and are reported as a skipped

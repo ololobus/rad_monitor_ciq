@@ -1,1 +1,4 @@
-<strings><string id="AppName">RadMonitor</string></strings>
+<strings>
+  <string id="AppName">RadMonitor</string>
+  <string id="AppNameBeta">RadMonitor Beta</string>
+</strings>

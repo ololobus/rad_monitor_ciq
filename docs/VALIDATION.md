@@ -6,23 +6,43 @@ installed device ID `instinct3solar45mm`.
 
 ## Compiler
 
-`./scripts/build.sh` completed successfully with no warnings.
+All four explicit production/beta targets completed successfully with no
+warnings. The figures below are from the production targets; beta has the same
+code and static-data totals.
 
 | Compiler metric | Bytes |
 | --- | ---: |
 | Foreground code | 16370 |
-| Foreground static data | 6027 |
+| Foreground static data | 6036 |
 | Glance code | 1930 |
 | Glance static data | 970 |
-| Total PRG file | 131244 |
+| Total PRG file | 131324 |
 
 PRG file size includes resources/metadata/signature and is not runtime RAM.
 Compiler code/data sizes exclude runtime heap use. The real watch's live BLE
 memory behavior remains unmeasured; free memory is logged when caching samples.
 The target limits are 128 KiB foreground and 32 KiB glance.
 
-Final PRG SHA-256:
-`534b2ebbe1f9abdd63632ff230808709287998ab849ae29d55b08c7c19a890b4`.
+The separate Instinct 3 Solar data-field target also compiled successfully:
+
+| Data-field compiler metric | Bytes |
+| --- | ---: |
+| Foreground code | 9115 |
+| Foreground static data | 3432 |
+| Total PRG file | 114124 |
+
+The data field has a 32 KiB runtime limit. These compiler figures do not include
+dynamic BLE response buffers, decoded dictionaries, or the packed 2.8 KB history
+ring, so physical-workout heap validation remains required.
+
+Final watch-app PRG SHA-256:
+`117917aff25cad28ef012106bcc946862fe7cd5203b25740a21c0fe7f27015c4`.
+
+Data-field PRG SHA-256:
+`3dbefa21421826cde8011cd98e864a12f7d65832989ecfc21c9ff677aabe12b1`.
+
+These are the production PRGs from this validation run. The build timestamp and
+the distinct application identity make beta and later-build hashes different.
 
 ## Native tests
 
@@ -52,6 +72,11 @@ Monkey C on Garmin's Instinct 3 Solar simulator.
 Synthetic fixtures use upstream Python `struct` layouts; they are **not physical
 Radiacode captures**. No Python decoder is substituted for the production Monkey C
 parser in these tests. Session mocks do not validate Garmin's real GATT stack.
+
+`./scripts/test-field.sh` additionally passes **3 data-field tests** covering
+dual-metric ten-second aggregation, bounded ring ordering, and the complete
+timer-free initialization/first-poll session with the same production protocol.
+It does not validate the physical workout lifecycle or Garmin Connect FIT sync.
 
 The SDK's `monkeydo` returned exit status 1 even for its explicit all-passed
 report on this Mac. The test wrapper handles status 0/1 only when the output

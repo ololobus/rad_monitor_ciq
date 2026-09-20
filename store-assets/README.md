@@ -9,6 +9,23 @@ wordmarks or logos.
 | `store-icon.png` | Connect IQ Store listing icon | 500 × 500 px |
 | `on-device-store-icon.png` | Connect IQ on-device store icon | 128 × 128 px |
 
+Distinct 500 × 500 RGB cover images for each Store identity are under
+`covers/`:
+
+| File | Store identity |
+| --- | --- |
+| `covers/cover-app-production.png` | RadMonitor production watch app |
+| `covers/cover-app-beta.png` | RadMonitor Beta watch app |
+| `covers/cover-field-production.png` | RadMonitor Field production data field |
+| `covers/cover-field-beta.png` | RadMonitor Field Beta data field |
+
+The production watch-app cover uses the core yellow live-monitor treatment.
+The production field cover emphasizes workout routing and dual history plots.
+Both beta covers use blue/cyan diagnostic styling and a prominent `BETA` mark
+so they cannot be mistaken for production during upload. All four covers use a
+restrained, minimal palette, are opaque 8-bit RGB PNGs, and are kept below the
+Connect IQ submission limit of 300 KB.
+
 Editable sources are `store-icon.svg` and `on-device-store-icon.svg`. Regenerate
 the PNG files with `scripts/render_store_icons.py`; it requires Pillow. Both PNGs
 are 8-bit RGB with no alpha channel and use only a solid yellow background plus
