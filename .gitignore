@@ -1,0 +1,8 @@
+.tools/
+.keys/
+bin/
+*.prg
+*.iq
+*.debug.xml
+*.mir
+.DS_Store

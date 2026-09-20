@@ -1,0 +1,148 @@
+openjdk version "17.0.20.1" 2026-08-18
+openjdk version "17.0.20.1" 2026-08-18
+BUILD SUCCESSFUL
+------------------------------------------------------------------------------
+Executing test historyAggregationAndCapacity...
+PASS
+------------------------------------------------------------------------------
+Executing test historySurvivesRestartAndMarksPause...
+PASS
+------------------------------------------------------------------------------
+Executing test corruptHistoryIgnored...
+PASS
+------------------------------------------------------------------------------
+Executing test screenNavigationAndMenu...
+PASS
+------------------------------------------------------------------------------
+Executing test renderAllViewsWithNativeGraphics...
+PASS
+------------------------------------------------------------------------------
+Executing test requestVector...
+PASS
+------------------------------------------------------------------------------
+Executing test fragmentedResponse...
+PASS
+------------------------------------------------------------------------------
+Executing test boundedFrames...
+PASS
+------------------------------------------------------------------------------
+Executing test decodeMixedRecords...
+PASS
+------------------------------------------------------------------------------
+Executing test trailingZeroAndEmpty...
+PASS
+------------------------------------------------------------------------------
+Executing test rejectBadRecords...
+PASS
+------------------------------------------------------------------------------
+Executing test rejectHeaderMismatch...
+PASS
+------------------------------------------------------------------------------
+Executing test firmwareGate...
+PASS
+------------------------------------------------------------------------------
+Executing test truncatedRecords...
+PASS
+------------------------------------------------------------------------------
+Executing test recordGapKeepsParsingValidatedRecords...
+PASS
+------------------------------------------------------------------------------
+Executing test initializeAndPoll...
+RC tx=0007 seq=0
+RC tx=0a04 seq=1
+RC tx=0825 seq=2
+RC tx=000a seq=3
+RC firmware=4.8
+RC state=READY
+RC tx=0826 seq=4
+RC direct accumulated=28.200000 raw_uR=2820
+RC tx=0826 seq=5
+RC sample uSv/h=0.090000 cps=5.500000 raw=0.000009 flags=0 rt=0
+RC freeMemory=8334608
+PASS
+------------------------------------------------------------------------------
+Executing test unavailableDirectDoseKeepsDetectorCache...
+RC tx=0826 seq=0
+RC direct dose unavailable; waiting for detector status
+RC tx=0826 seq=1
+PASS
+------------------------------------------------------------------------------
+Executing test timeoutRetryAndStop...
+RC tx=0007 seq=0
+RC error=Reply timeout 0007 retry(ms)=5000
+PASS
+------------------------------------------------------------------------------
+Executing test badEchoDoesNotAdvanceSession...
+RC tx=0007 seq=0
+RC error=Protocol: Reply sequence retry(ms)=5000
+PASS
+------------------------------------------------------------------------------
+Executing test recordGapDoesNotReconnect...
+RC tx=0826 seq=0
+RC record gap: expected=0 actual=7 offset=22 remaining=37 eid=0 gid=1 total=1
+RC sample uSv/h=0.090000 cps=5.500000 raw=0.000009 flags=0 rt=0
+RC freeMemory=8334704
+RC tx=0826 seq=1
+RC sample uSv/h=0.090000 cps=5.500000 raw=0.000009 flags=0 rt=0
+PASS
+------------------------------------------------------------------------------
+Executing test rareDataAndUncertainty...
+PASS
+------------------------------------------------------------------------------
+Executing test statusOnlyResponsePersists...
+RC tx=0826 seq=0
+RC battery=87.650002 accumulated=2.500000 rawTotal=0.000250 duration=3661
+RC tx=0826 seq=1
+RC sample uSv/h=0.090000 cps=5.500000 raw=0.000009 flags=0 rt=0
+RC freeMemory=8334520
+PASS
+------------------------------------------------------------------------------
+Executing test rareGapAndTruncation...
+PASS
+------------------------------------------------------------------------------
+Executing test batterySettingsAndRendering...
+PASS
+------------------------------------------------------------------------------
+Executing test historicalStatusCannotReplaceCurrent...
+RC accumulated dose reset
+PASS
+------------------------------------------------------------------------------
+Executing test doseResetEventDecoded...
+PASS
+------------------------------------------------------------------------------
+Executing test smallFutureTimestampIsCurrent...
+PASS
+
+==============================================================================
+RESULTS
+Test:                                   Status:
+historyAggregationAndCapacity           PASS
+historySurvivesRestartAndMarksPause     PASS
+corruptHistoryIgnored                   PASS
+screenNavigationAndMenu                 PASS
+renderAllViewsWithNativeGraphics        PASS
+requestVector                           PASS
+fragmentedResponse                      PASS
+boundedFrames                           PASS
+decodeMixedRecords                      PASS
+trailingZeroAndEmpty                    PASS
+rejectBadRecords                        PASS
+rejectHeaderMismatch                    PASS
+firmwareGate                            PASS
+truncatedRecords                        PASS
+recordGapKeepsParsingValidatedRecords   PASS
+initializeAndPoll                       PASS
+unavailableDirectDoseKeepsDetectorCache PASS
+timeoutRetryAndStop                     PASS
+badEchoDoesNotAdvanceSession            PASS
+recordGapDoesNotReconnect               PASS
+rareDataAndUncertainty                  PASS
+statusOnlyResponsePersists              PASS
+rareGapAndTruncation                    PASS
+batterySettingsAndRendering             PASS
+historicalStatusCannotReplaceCurrent    PASS
+doseResetEventDecoded                   PASS
+smallFutureTimestampIsCurrent           PASS
+Ran 27 tests
+
+PASSED (passed=27, failed=0, errors=0)

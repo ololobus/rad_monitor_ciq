@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<iq:manifest xmlns:iq="http://www.garmin.com/xml/connectiq" version="3">
+  <iq:application id="3d1a9018d56f47b399c106d69763baee" type="watch-app" name="@Strings.AppName" entry="RadMonitorApp" launcherIcon="@Drawables.LauncherIcon" minApiLevel="4.0.0">
+    <iq:products><iq:product id="instinct3solar45mm"/></iq:products>
+    <iq:permissions><iq:uses-permission id="BluetoothLowEnergy"/></iq:permissions>
+    <iq:languages><iq:language>eng</iq:language></iq:languages>
+    <iq:barrels/>
+  </iq:application>
+</iq:manifest>
