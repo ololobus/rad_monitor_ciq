@@ -19,12 +19,13 @@ Distinct 500 × 500 RGB cover images for each Store identity are under
 | `covers/cover-field-production.png` | RadMonitor Field production data field |
 | `covers/cover-field-beta.png` | RadMonitor Field Beta data field |
 
-The production watch-app cover uses the core yellow live-monitor treatment.
-The production field cover emphasizes workout routing and dual history plots.
-Both beta covers use blue/cyan diagnostic styling and a prominent `BETA` mark
-so they cannot be mistaken for production during upload. All four covers use a
-restrained, minimal palette, are opaque 8-bit RGB PNGs, and are kept below the
-Connect IQ submission limit of 300 KB.
+The production watch-app cover shows a schematic Instinct 3 Solar Tactical-style
+chassis with the one-hour plot and a trefoil in its circular window. The
+production field cover combines dual history plots with a dotted schematic
+route. Production covers use restrained color; each beta cover is a monochrome
+derivative of the matching composition and adds `BETA` only as black typography
+on a white clip beside the product name. All four covers are opaque 500 × 500
+8-bit RGB PNGs kept below the Connect IQ submission limit of 300 KB.
 
 Editable sources are `store-icon.svg` and `on-device-store-icon.svg`. Regenerate
 the PNG files with `scripts/render_store_icons.py`; it requires Pillow. Both PNGs
